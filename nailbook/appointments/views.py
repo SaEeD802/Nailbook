@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, time
 from .models import Appointment, TimeSlot
 from salons.models import Salon, Staff
 from services.models import Service
+from accounts.models import User
 import json
 
 @login_required
@@ -53,12 +54,12 @@ def appointment_book(request, salon_id):
     """رزرو نوبت"""
     salon = get_object_or_404(Salon, id=salon_id, is_active=True)
     services = salon.services.filter(is_active=True)
-    staff_members = salon.staff_members.filter(is_available=True).select_related('user')
+    staff_members = salon.staff_members.all().select_related('user')
     
     if request.method == 'POST':
         service_id = request.POST.get('service_id')
         staff_id = request.POST.get('staff_id')
-        appointment_date = request.POST.get('appointment_date')
+        appointment_date = request.POST.get('appointment_date_gregorian') or request.POST.get('appointment_date')
         appointment_time = request.POST.get('appointment_time')
         notes = request.POST.get('notes', '')
         
@@ -269,3 +270,219 @@ def appointment_calendar_data(request, salon_id):
         })
     
     return JsonResponse(events, safe=False)
+
+@login_required
+def my_appointments(request):
+    """نوبت‌های من"""
+    appointments = Appointment.objects.filter(
+        customer=request.user
+    ).select_related('salon', 'staff__user', 'service').order_by('-appointment_date', '-appointment_time')
+    
+    context = {'appointments': appointments}
+    return render(request, 'appointments/my_appointments.html', context)
+
+@login_required
+def appointment_detail(request, appointment_id):
+    """جزئیات نوبت"""
+    appointment = get_object_or_404(Appointment, id=appointment_id)
+    
+    # بررسی مجوز
+    if not (appointment.customer == request.user or 
+            appointment.salon.owner == request.user or
+            (hasattr(request.user, 'staff') and request.user.staff.salon == appointment.salon)):
+        messages.error(request, 'دسترسی غیر مجاز')
+        return redirect('appointments:customer_dashboard')
+    
+    context = {'appointment': appointment}
+    return render(request, 'appointments/detail.html', context)
+
+@login_required
+def appointment_reschedule(request, appointment_id):
+    """تغییر زمان نوبت"""
+    appointment = get_object_or_404(Appointment, id=appointment_id)
+    
+    # بررسی مجوز
+    if appointment.customer != request.user:
+        messages.error(request, 'دسترسی غیر مجاز')
+        return redirect('appointments:customer_dashboard')
+    
+    if not appointment.can_be_cancelled():
+        messages.error(request, 'این نوبت قابل تغییر نیست')
+        return redirect('appointments:customer_dashboard')
+    
+    if request.method == 'POST':
+        new_date = request.POST.get('appointment_date')
+        new_time = request.POST.get('appointment_time')
+        
+        try:
+            appointment_date = datetime.strptime(new_date, '%Y-%m-%d').date()
+            appointment_time = datetime.strptime(new_time, '%H:%M').time()
+            
+            # بررسی تداخل
+            if Appointment.objects.filter(
+                salon=appointment.salon,
+                staff=appointment.staff,
+                appointment_date=appointment_date,
+                appointment_time=appointment_time,
+                status__in=['pending', 'confirmed', 'in_progress']
+            ).exclude(id=appointment.id).exists():
+                messages.error(request, 'این زمان رزرو شده است')
+                return render(request, 'appointments/reschedule.html', {'appointment': appointment})
+            
+            appointment.appointment_date = appointment_date
+            appointment.appointment_time = appointment_time
+            appointment.status = 'pending'  # بازگشت به حالت انتظار
+            appointment.save()
+            
+            messages.success(request, 'زمان نوبت تغییر کرد')
+            return redirect('appointments:customer_dashboard')
+            
+        except Exception as e:
+            messages.error(request, f'خطا: {str(e)}')
+    
+    context = {
+        'appointment': appointment,
+        'staff_members': appointment.salon.staff_members.filter(is_available=True)
+    }
+    return render(request, 'appointments/reschedule.html', context)
+
+def quick_book(request, salon_id):
+    """رزرو سریع بدون ثبت‌نام"""
+    salon = get_object_or_404(Salon, id=salon_id, is_active=True)
+    services = salon.services.filter(is_active=True)
+    staff_members = salon.staff_members.all().select_related('user')
+    
+    if request.method == 'POST':
+        # اطلاعات مشتری
+        customer_name = request.POST.get('customer_name')
+        customer_phone = request.POST.get('customer_phone')
+        
+        service_id = request.POST.get('service_id')
+        staff_id = request.POST.get('staff_id')
+        appointment_date = request.POST.get('appointment_date')
+        appointment_time = request.POST.get('appointment_time')
+        notes = request.POST.get('notes', '')
+        
+        try:
+            service = get_object_or_404(Service, id=service_id, salon=salon)
+            staff = get_object_or_404(Staff, id=staff_id, salon=salon)
+            
+            appointment_date = datetime.strptime(appointment_date, '%Y-%m-%d').date()
+            appointment_time = datetime.strptime(appointment_time, '%H:%M').time()
+            
+            # بررسی تداخل
+            if Appointment.objects.filter(
+                salon=salon,
+                staff=staff,
+                appointment_date=appointment_date,
+                appointment_time=appointment_time,
+                status__in=['pending', 'confirmed', 'in_progress']
+            ).exists():
+                messages.error(request, 'این زمان رزرو شده است')
+                return render(request, 'appointments/quick_book.html', {
+                    'salon': salon, 'services': services, 'staff_members': staff_members
+                })
+            
+            # ایجاد یا پیدا کردن مشتری
+            customer = None
+            if customer_phone:
+                try:
+                    customer = User.objects.get(phone=customer_phone)
+                except User.DoesNotExist:
+                    # ایجاد مشتری جدید
+                    username = f"guest_{customer_phone}"
+                    customer = User.objects.create_user(
+                        username=username,
+                        phone=customer_phone,
+                        first_name=customer_name,
+                        role='customer'
+                    )
+            
+            # ایجاد نوبت
+            appointment = Appointment.objects.create(
+                salon=salon,
+                customer=customer,
+                staff=staff,
+                service=service,
+                appointment_date=appointment_date,
+                appointment_time=appointment_time,
+                total_price=service.price,
+                notes=f"نام: {customer_name}\nتلفن: {customer_phone}\n{notes}"
+            )
+            
+            return redirect('appointments:booking_success', appointment_id=appointment.id)
+            
+        except Exception as e:
+            messages.error(request, f'خطا: {str(e)}')
+    
+    context = {
+        'salon': salon,
+        'services': services,
+        'staff_members': staff_members
+    }
+    return render(request, 'appointments/quick_book.html', context)
+
+def booking_success(request, appointment_id):
+    """صفحه موفقیت رزرو"""
+    appointment = get_object_or_404(Appointment, id=appointment_id)
+    
+    context = {'appointment': appointment}
+    return render(request, 'appointments/booking_success.html', context)
+
+@login_required
+def appointment_manage(request, salon_id):
+    """مدیریت نوبت‌های سالن"""
+    salon = get_object_or_404(Salon, id=salon_id)
+    
+    # بررسی مجوز
+    if not (salon.owner == request.user or 
+            (hasattr(request.user, 'staff') and request.user.staff.salon == salon)):
+        messages.error(request, 'دسترسی غیر مجاز')
+        return redirect('accounts:login')
+    
+    # فیلترها
+    status_filter = request.GET.get('status', 'all')
+    date_filter = request.GET.get('date')
+    
+    appointments = Appointment.objects.filter(salon=salon).select_related(
+        'customer', 'staff__user', 'service'
+    ).order_by('-appointment_date', '-appointment_time')
+    
+    if status_filter != 'all':
+        appointments = appointments.filter(status=status_filter)
+    
+    if date_filter:
+        appointments = appointments.filter(appointment_date=date_filter)
+    
+    context = {
+        'salon': salon,
+        'appointments': appointments,
+        'status_filter': status_filter,
+        'date_filter': date_filter,
+        'status_choices': Appointment.STATUS_CHOICES
+    }
+    return render(request, 'appointments/manage.html', context)
+
+@login_required
+def today_appointments(request, salon_id):
+    """نوبت‌های امروز"""
+    salon = get_object_or_404(Salon, id=salon_id)
+    
+    # بررسی مجوز
+    if not (salon.owner == request.user or 
+            (hasattr(request.user, 'staff') and request.user.staff.salon == salon)):
+        messages.error(request, 'دسترسی غیر مجاز')
+        return redirect('accounts:login')
+    
+    today = timezone.now().date()
+    appointments = Appointment.objects.filter(
+        salon=salon,
+        appointment_date=today
+    ).select_related('customer', 'staff__user', 'service').order_by('appointment_time')
+    
+    context = {
+        'salon': salon,
+        'appointments': appointments,
+        'today': today
+    }
+    return render(request, 'appointments/today.html', context)

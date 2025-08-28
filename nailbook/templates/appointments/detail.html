@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% load persian_filters %}
+
+{% block title %}جزئیات نوبت - نیل بوک{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-info-circle me-2"></i>جزئیات نوبت</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>اطلاعات مشتری</h5>
+                        <p>
+                            <strong>نام:</strong> {{ appointment.customer.get_full_name|default:appointment.customer.username }}<br>
+                            <strong>تلفن:</strong> {{ appointment.customer.phone|default:"ثبت نشده" }}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>اطلاعات سالن</h5>
+                        <p>
+                            <strong>سالن:</strong> {{ appointment.salon.name }}<br>
+                            <strong>کارمند:</strong> {{ appointment.staff.user.get_full_name }}
+                        </p>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>اطلاعات خدمت</h5>
+                        <p>
+                            <strong>خدمت:</strong> {{ appointment.service.name }}<br>
+                            <strong>مدت زمان:</strong> {{ appointment.service.duration }} دقیقه
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>زمان نوبت</h5>
+                        <p>
+                            <strong>تاریخ:</strong> {{ appointment.get_persian_date }}<br>
+                            <strong>ساعت:</strong> {{ appointment.appointment_time }}
+                        </p>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>وضعیت و پرداخت</h5>
+                        <p>
+                            <strong>وضعیت:</strong> 
+                            <span class="badge bg-{% if appointment.status == 'completed' %}success{% elif appointment.status == 'confirmed' %}primary{% elif appointment.status == 'pending' %}warning{% elif appointment.status == 'cancelled' %}danger{% else %}secondary{% endif %}">
+                                {{ appointment.get_status_display_fa }}
+                            </span><br>
+                            <strong>مبلغ:</strong> {{ appointment.total_price|format_price }} تومان<br>
+                            <strong>پرداخت:</strong> 
+                            {% if appointment.is_paid %}
+                                <span class="text-success">پرداخت شده</span>
+                            {% else %}
+                                <span class="text-danger">پرداخت نشده</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        {% if appointment.notes %}
+                            <h5>یادداشت</h5>
+                            <p>{{ appointment.notes }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="d-flex gap-2 justify-content-end">
+                    {% if user.role == 'salon_owner' or user.role == 'staff' %}
+                        {% if appointment.status == 'pending' %}
+                            <button class="btn btn-success" onclick="updateStatus('confirmed')">تایید نوبت</button>
+                        {% endif %}
+                        {% if appointment.status == 'confirmed' %}
+                            <button class="btn btn-primary" onclick="updateStatus('in_progress')">شروع خدمت</button>
+                        {% endif %}
+                        {% if appointment.status == 'in_progress' %}
+                            <button class="btn btn-success" onclick="updateStatus('completed')">تکمیل خدمت</button>
+                        {% endif %}
+                        {% if appointment.status in 'pending,confirmed' %}
+                            <button class="btn btn-warning" onclick="updateStatus('cancelled')">لغو نوبت</button>
+                        {% endif %}
+                    {% endif %}
+                    
+                    {% if appointment.customer == user and appointment.can_be_cancelled %}
+                        <a href="{% url 'appointments:cancel' appointment.id %}" class="btn btn-danger">لغو نوبت</a>
+                        <a href="{% url 'appointments:reschedule' appointment.id %}" class="btn btn-warning">تغییر زمان</a>
+                    {% endif %}
+                    
+                    <a href="javascript:history.back()" class="btn btn-secondary">بازگشت</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateStatus(status) {
+    if (confirm('آیا مطمئن هستید؟')) {
+        fetch(`{% url 'appointments:update_status' appointment.id %}`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `status=${status}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('خطا: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('خطا در بروزرسانی وضعیت');
+        });
+    }
+}
+</script>
+{% endblock %}

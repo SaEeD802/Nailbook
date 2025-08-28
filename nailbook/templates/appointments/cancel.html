@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% load persian_filters %}
+
+{% block title %}لغو نوبت - نیل بوک{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-warning">
+                <h4 class="mb-0 text-dark">
+                    <i class="fas fa-exclamation-triangle me-2"></i>لغو نوبت
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-info-circle me-2"></i>
+                    آیا مطمئن هستید که می‌خواهید این نوبت را لغو کنید؟
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">جزئیات نوبت</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>سالن:</strong> {{ appointment.salon.name }}</p>
+                                <p><strong>خدمت:</strong> {{ appointment.service.name }}</p>
+                                <p><strong>تاریخ:</strong> {{ appointment.appointment_date|persian_date }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>ساعت:</strong> {{ appointment.appointment_time|persian_time }}</p>
+                                <p><strong>کارمند:</strong> {{ appointment.staff.get_full_name|default:"تعیین نشده" }}</p>
+                                <p><strong>قیمت:</strong> {{ appointment.service.price|format_price }} تومان</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="cancellation_reason" class="form-label">دلیل لغو (اختیاری)</label>
+                        <textarea class="form-control" id="cancellation_reason" name="cancellation_reason" 
+                                  rows="3" placeholder="دلیل لغو نوبت را بنویسید..."></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>توجه:</strong> پس از لغو نوبت، امکان بازگردانی آن وجود ندارد. در صورت نیاز، می‌توانید نوبت جدیدی رزرو کنید.
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'appointments:detail' appointment.id %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-right me-2"></i>بازگشت
+                        </a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-times me-2"></i>تأیید لغو نوبت
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

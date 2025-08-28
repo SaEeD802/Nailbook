@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% load persian_filters %}
+
+{% block title %}داشبورد مشتری - نیل بوک{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-user me-2"></i>داشبورد مشتری</h2>
+        
+        <!-- نوبت‌های آینده -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="fas fa-calendar-alt me-2"></i>نوبت‌های آینده</h5>
+            </div>
+            <div class="card-body">
+                {% if upcoming_appointments %}
+                    <div class="row">
+                        {% for appointment in upcoming_appointments %}
+                            <div class="col-md-6 mb-3">
+                                <div class="card border-primary">
+                                    <div class="card-body">
+                                        <h6 class="card-title">{{ appointment.salon.name }}</h6>
+                                        <p class="card-text">
+                                            <i class="fas fa-cut me-2"></i>{{ appointment.service.name }}<br>
+                                            <i class="fas fa-user me-2"></i>{{ appointment.staff.user.get_full_name }}<br>
+                                            <i class="fas fa-calendar me-2"></i>{{ appointment.get_persian_date }}<br>
+                                            <i class="fas fa-clock me-2"></i>{{ appointment.appointment_time }}<br>
+                                            <i class="fas fa-money-bill me-2"></i>{{ appointment.total_price|format_price }} تومان
+                                        </p>
+                                        <div class="d-flex gap-2">
+                                            <a href="{% url 'appointments:detail' appointment.id %}" class="btn btn-sm btn-outline-primary">جزئیات</a>
+                                            {% if appointment.can_be_cancelled %}
+                                                <a href="{% url 'appointments:cancel' appointment.id %}" class="btn btn-sm btn-outline-danger">لغو</a>
+                                                <a href="{% url 'appointments:reschedule' appointment.id %}" class="btn btn-sm btn-outline-warning">تغییر زمان</a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>شما نوبت آینده‌ای ندارید.
+                        <a href="{% url 'appointments:salon_list' %}" class="btn btn-primary ms-3">رزرو نوبت جدید</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- نوبت‌های گذشته -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-history me-2"></i>نوبت‌های گذشته</h5>
+            </div>
+            <div class="card-body">
+                {% if past_appointments %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>سالن</th>
+                                    <th>خدمت</th>
+                                    <th>تاریخ</th>
+                                    <th>وضعیت</th>
+                                    <th>مبلغ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for appointment in past_appointments %}
+                                    <tr>
+                                        <td>{{ appointment.salon.name }}</td>
+                                        <td>{{ appointment.service.name }}</td>
+                                        <td>{{ appointment.get_persian_date }} - {{ appointment.appointment_time }}</td>
+                                        <td>
+                                            <span class="badge bg-{% if appointment.status == 'completed' %}success{% elif appointment.status == 'cancelled' %}danger{% else %}secondary{% endif %}">
+                                                {{ appointment.get_status_display_fa }}
+                                            </span>
+                                        </td>
+                                        <td>{{ appointment.total_price|format_price }} تومان</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>شما هنوز نوبتی نداشته‌اید.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

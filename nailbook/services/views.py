@@ -52,3 +52,57 @@ def public_services(request, salon_id):
         'services': services
     }
     return render(request, 'services/public_list.html', context)
+
+@login_required
+def service_edit(request, service_id):
+    """ویرایش خدمت"""
+    service = get_object_or_404(Service, id=service_id)
+    
+    # بررسی مجوز
+    if service.salon.owner != request.user:
+        messages.error(request, 'دسترسی غیر مجاز')
+        return redirect('salons:dashboard')
+    
+    if request.method == 'POST':
+        service.name = request.POST.get('name')
+        service.description = request.POST.get('description', '')
+        service.price = int(request.POST.get('price'))
+        service.duration = int(request.POST.get('duration'))
+        service.save()
+        
+        messages.success(request, f'خدمت {service.name} بروزرسانی شد')
+        return redirect('services:list', salon_id=service.salon.id)
+    
+    context = {'service': service}
+    return render(request, 'services/edit.html', context)
+
+@login_required
+def service_delete(request, service_id):
+    """حذف خدمت"""
+    service = get_object_or_404(Service, id=service_id)
+    
+    # بررسی مجوز
+    if service.salon.owner != request.user:
+        messages.error(request, 'دسترسی غیر مجاز')
+        return redirect('salons:dashboard')
+    
+    if request.method == 'POST':
+        salon_id = service.salon.id
+        service_name = service.name
+        service.delete()
+        
+        messages.success(request, f'خدمت {service_name} حذف شد')
+        return redirect('services:list', salon_id=salon_id)
+    
+    context = {'service': service}
+    return render(request, 'services/delete_confirm.html', context)
+
+def service_detail(request, service_id):
+    """جزئیات خدمت"""
+    service = get_object_or_404(Service, id=service_id, is_active=True)
+    
+    context = {
+        'service': service,
+        'salon': service.salon
+    }
+    return render(request, 'services/detail.html', context)

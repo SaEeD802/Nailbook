@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% load persian_filters %}
+
+{% block title %}تغییر زمان نوبت - نیل بوک{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-edit me-2"></i>تغییر زمان نوبت
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">اطلاعات فعلی نوبت</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>سالن:</strong> {{ appointment.salon.name }}</p>
+                                <p><strong>خدمت:</strong> {{ appointment.service.name }}</p>
+                                <p><strong>تاریخ فعلی:</strong> {{ appointment.appointment_date|persian_date }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>ساعت فعلی:</strong> {{ appointment.appointment_time|persian_time }}</p>
+                                <p><strong>کارمند:</strong> {{ appointment.staff.get_full_name|default:"تعیین نشده" }}</p>
+                                <p><strong>قیمت:</strong> {{ appointment.service.price|format_price }} تومان</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <form method="post" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="new_date" class="form-label">تاریخ جدید *</label>
+                            <input type="date" class="form-control" id="new_date" name="new_date" required>
+                            <div class="invalid-feedback">
+                                لطفاً تاریخ جدید را انتخاب کنید.
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="staff" class="form-label">کارمند</label>
+                            <select class="form-select" id="staff" name="staff">
+                                <option value="">انتخاب کنید...</option>
+                                {% for staff_member in staff_members %}
+                                <option value="{{ staff_member.id }}" 
+                                        {% if staff_member.id == appointment.staff.id %}selected{% endif %}>
+                                    {{ staff_member.get_full_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="new_time" class="form-label">ساعت جدید *</label>
+                        <select class="form-select" id="new_time" name="new_time" required disabled>
+                            <option value="">ابتدا تاریخ و کارمند را انتخاب کنید</option>
+                        </select>
+                        <div class="invalid-feedback">
+                            لطفاً ساعت جدید را انتخاب کنید.
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="reason" class="form-label">دلیل تغییر (اختیاری)</label>
+                        <textarea class="form-control" id="reason" name="reason" rows="3" 
+                                  placeholder="دلیل تغییر زمان نوبت را بنویسید..."></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        پس از تغییر زمان، نوبت جدید شما تأیید خواهد شد.
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'appointments:detail' appointment.id %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-right me-2"></i>بازگشت
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>تأیید تغییر
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.getElementById('new_date');
+    const staffSelect = document.getElementById('staff');
+    const timeSelect = document.getElementById('new_time');
+    
+    // Set minimum date to today
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.setAttribute('min', today);
+    
+    function loadAvailableTimes() {
+        const staffId = staffSelect.value;
+        const date = dateInput.value;
+        
+        if (staffId && date) {
+            loadAvailableTimes({{ appointment.salon.id }}, staffId, date, timeSelect);
+        }
+    }
+    
+    dateInput.addEventListener('change', loadAvailableTimes);
+    staffSelect.addEventListener('change', loadAvailableTimes);
+});
+</script>
+{% endblock %}
+{% endblock %}

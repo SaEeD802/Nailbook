@@ -1,0 +1,237 @@
+{% extends 'base.html' %}
+{% load persian_filters %}
+
+{% block title %}نوبت‌های امروز - نیل بوک{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">
+                    <i class="fas fa-calendar-day me-2"></i>نوبت‌های امروز - {{ salon.name }}
+                </h4>
+                <span class="badge bg-primary fs-6">{{ today_date|persian_date }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="dashboard-card bg-info">
+            <i class="fas fa-calendar-alt"></i>
+            <h3>{{ stats.total }}</h3>
+            <p>کل نوبت‌ها</p>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="dashboard-card bg-success">
+            <i class="fas fa-check-circle"></i>
+            <h3>{{ stats.completed }}</h3>
+            <p>انجام شده</p>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="dashboard-card bg-warning">
+            <i class="fas fa-clock"></i>
+            <h3>{{ stats.pending }}</h3>
+            <p>در انتظار</p>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="dashboard-card bg-primary">
+            <i class="fas fa-money-bill-wave"></i>
+            <h3>{{ stats.revenue|format_price }}</h3>
+            <p>درآمد امروز</p>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                {% if appointments %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ساعت</th>
+                                <th>مشتری</th>
+                                <th>خدمت</th>
+                                <th>کارمند</th>
+                                <th>مدت</th>
+                                <th>قیمت</th>
+                                <th>وضعیت</th>
+                                <th>عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for appointment in appointments %}
+                            <tr class="{% if appointment.status == 'in_progress' %}table-primary{% elif appointment.status == 'completed' %}table-success{% elif appointment.status == 'cancelled' %}table-danger{% endif %}">
+                                <td>
+                                    <strong>{{ appointment.appointment_time|persian_time }}</strong>
+                                </td>
+                                <td>
+                                    <div>
+                                        <strong>{{ appointment.customer_name }}</strong>
+                                        <br>
+                                        <small class="text-muted">
+                                            <i class="fas fa-phone me-1"></i>{{ appointment.customer_phone }}
+                                        </small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div>
+                                        <strong>{{ appointment.service.name }}</strong>
+                                        {% if appointment.service.description %}
+                                        <br>
+                                        <small class="text-muted">{{ appointment.service.description|truncatechars:50 }}</small>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if appointment.staff %}
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-user-circle fa-2x text-muted me-2"></i>
+                                            <div>
+                                                <strong>{{ appointment.staff.get_full_name }}</strong>
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">تعیین نشده</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ appointment.service.duration }} دقیقه</span>
+                                </td>
+                                <td>
+                                    <strong>{{ appointment.service.price|format_price }} تومان</strong>
+                                </td>
+                                <td>
+                                    <span class="badge status-{{ appointment.status }}">
+                                        {{ appointment.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        {% if appointment.status == 'pending' %}
+                                        <button class="btn btn-outline-success" 
+                                                onclick="updateAppointmentStatus({{ appointment.id }}, 'confirmed')"
+                                                title="تأیید">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        {% elif appointment.status == 'confirmed' %}
+                                        <button class="btn btn-outline-primary" 
+                                                onclick="updateAppointmentStatus({{ appointment.id }}, 'in_progress')"
+                                                title="شروع">
+                                            <i class="fas fa-play"></i>
+                                        </button>
+                                        {% elif appointment.status == 'in_progress' %}
+                                        <button class="btn btn-outline-success" 
+                                                onclick="updateAppointmentStatus({{ appointment.id }}, 'completed')"
+                                                title="تمام">
+                                            <i class="fas fa-check-circle"></i>
+                                        </button>
+                                        {% endif %}
+                                        
+                                        <a href="{% url 'appointments:detail' appointment.id %}" 
+                                           class="btn btn-outline-info" title="جزئیات">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        
+                                        {% if appointment.status != 'completed' and appointment.status != 'cancelled' %}
+                                        <button class="btn btn-outline-danger" 
+                                                onclick="updateAppointmentStatus({{ appointment.id }}, 'cancelled')"
+                                                title="لغو">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-calendar-times fa-5x text-muted mb-3"></i>
+                    <h5>امروز نوبتی ندارید</h5>
+                    <p class="text-muted">روز آرامی پیش رو دارید!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>نمودار ساعات
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if hourly_stats %}
+                {% for hour in hourly_stats %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>{{ hour.hour }}:00</span>
+                    <div class="flex-grow-1 mx-3">
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar" role="progressbar" 
+                                 style="width: {{ hour.percentage }}%"></div>
+                        </div>
+                    </div>
+                    <span class="badge bg-primary">{{ hour.count }}</span>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="text-muted">داده‌ای موجود نیست</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-users me-2"></i>کارمندان امروز
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if staff_stats %}
+                {% for staff in staff_stats %}
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-user-circle fa-2x text-muted me-2"></i>
+                        <div>
+                            <strong>{{ staff.staff__get_full_name }}</strong>
+                            <br>
+                            <small class="text-muted">{{ staff.count }} نوبت</small>
+                        </div>
+                    </div>
+                    <span class="badge bg-success">{{ staff.revenue|format_price }}</span>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="text-muted">داده‌ای موجود نیست</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a href="{% url 'salons:dashboard' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-right me-2"></i>بازگشت به داشبورد
+    </a>
+    <a href="{% url 'appointments:manage' salon.id %}" class="btn btn-primary">
+        <i class="fas fa-tasks me-2"></i>مدیریت همه نوبت‌ها
+    </a>
+</div>
+{% endblock %}

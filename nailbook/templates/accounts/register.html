@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}ثبت‌نام - نیل بوک{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header text-center">
+                <h4><i class="fas fa-user-plus me-2"></i>ثبت‌نام در نیل بوک</h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="first_name" class="form-label">نام</label>
+                            <input type="text" class="form-control" id="first_name" name="first_name">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="last_name" class="form-label">نام خانوادگی</label>
+                            <input type="text" class="form-control" id="last_name" name="last_name">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="username" class="form-label">نام کاربری</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">شماره تلفن</label>
+                        <input type="tel" class="form-control" id="phone" name="phone" placeholder="09123456789">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="password" class="form-label">رمز عبور</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="role" class="form-label">نقش</label>
+                        <select class="form-select" id="role" name="role">
+                            <option value="customer">مشتری</option>
+                            <option value="salon_owner">صاحب سالن</option>
+                        </select>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-user-plus me-2"></i>ثبت‌نام
+                        </button>
+                    </div>
+                </form>
+                
+                <div class="text-center mt-3">
+                    <p>قبلاً ثبت‌نام کرده‌اید؟ <a href="{% url 'accounts:login' %}">وارد شوید</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% load persian_filters %}
+
+{% block title %}نوبت‌های من - نیل بوک{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">
+                    <i class="fas fa-calendar-alt me-2"></i>نوبت‌های من
+                </h4>
+                <a href="{% url 'appointments:salon_list' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>رزرو نوبت جدید
+                </a>
+            </div>
+            <div class="card-body">
+                {% if appointments %}
+                <div class="row">
+                    {% for appointment in appointments %}
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card appointment-card h-100">
+                            <div class="card-header bg-{{ appointment.status|default:'secondary' }}">
+                                <div class="d-flex justify-content-between align-items-center text-white">
+                                    <strong>{{ appointment.salon.name }}</strong>
+                                    <span class="badge bg-light text-dark">
+                                        {{ appointment.get_status_display }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <h6 class="card-title">{{ appointment.service.name }}</h6>
+                                <div class="mb-2">
+                                    <i class="fas fa-calendar me-2 text-muted"></i>
+                                    <span>{{ appointment.appointment_date|persian_date }}</span>
+                                </div>
+                                <div class="mb-2">
+                                    <i class="fas fa-clock me-2 text-muted"></i>
+                                    <span>{{ appointment.appointment_time|persian_time }}</span>
+                                </div>
+                                <div class="mb-2">
+                                    <i class="fas fa-user me-2 text-muted"></i>
+                                    <span>{{ appointment.staff.get_full_name|default:"تعیین نشده" }}</span>
+                                </div>
+                                <div class="mb-3">
+                                    <i class="fas fa-money-bill me-2 text-muted"></i>
+                                    <span>{{ appointment.service.price|format_price }} تومان</span>
+                                </div>
+                                
+                                <div class="d-grid gap-2">
+                                    <a href="{% url 'appointments:detail' appointment.id %}" 
+                                       class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-eye me-2"></i>جزئیات
+                                    </a>
+                                    {% if appointment.status == 'pending' or appointment.status == 'confirmed' %}
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{% url 'appointments:reschedule' appointment.id %}" 
+                                           class="btn btn-outline-warning">
+                                            <i class="fas fa-edit me-1"></i>تغییر
+                                        </a>
+                                        <a href="{% url 'appointments:cancel' appointment.id %}" 
+                                           class="btn btn-outline-danger">
+                                            <i class="fas fa-times me-1"></i>لغو
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="card-footer text-muted small">
+                                رزرو شده: {{ appointment.created_at|persian_datetime }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                {% if appointments.has_other_pages %}
+                <nav aria-label="صفحه‌بندی">
+                    <ul class="pagination justify-content-center">
+                        {% if appointments.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ appointments.previous_page_number }}">قبلی</a>
+                            </li>
+                        {% endif %}
+                        
+                        <li class="page-item active">
+                            <span class="page-link">{{ appointments.number }} از {{ appointments.paginator.num_pages }}</span>
+                        </li>
+                        
+                        {% if appointments.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ appointments.next_page_number }}">بعدی</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-calendar-times fa-5x text-muted mb-3"></i>
+                    <h5>هنوز نوبتی رزرو نکرده‌اید</h5>
+                    <p class="text-muted">برای رزرو اولین نوبت خود، از دکمه زیر استفاده کنید.</p>
+                    <a href="{% url 'appointments:salon_list' %}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-plus me-2"></i>رزرو نوبت جدید
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

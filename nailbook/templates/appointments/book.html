@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+{% load persian_filters %}
+
+{% block title %}رزرو نوبت - {{ salon.name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-calendar-plus me-2"></i>رزرو نوبت در {{ salon.name }}</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" id="bookingForm">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="service_id" class="form-label">انتخاب خدمت</label>
+                        <select class="form-select" id="service_id" name="service_id" required>
+                            <option value="">خدمت مورد نظر را انتخاب کنید</option>
+                            {% for service in services %}
+                                <option value="{{ service.id }}" data-price="{{ service.price }}" data-duration="{{ service.duration }}">
+                                    {{ service.name }} - {{ service.price|format_price }} تومان ({{ service.duration }} دقیقه)
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="staff_id" class="form-label">انتخاب کارمند</label>
+                        <select class="form-select" id="staff_id" name="staff_id" required>
+                            <option value="">کارمند مورد نظر را انتخاب کنید</option>
+                            {% for staff in staff_members %}
+                                <option value="{{ staff.id }}">
+                                    {{ staff.user.get_full_name }} 
+                                    {% if staff.specialties %}({{ staff.specialties }}){% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="appointment_date" class="form-label">تاریخ نوبت</label>
+                        <input type="text" class="form-control" id="appointment_date" name="appointment_date" required readonly placeholder="انتخاب تاریخ شمسی">
+                        <input type="hidden" id="appointment_date_gregorian" name="appointment_date_gregorian">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="appointment_time" class="form-label">ساعت نوبت</label>
+                        <select class="form-select" id="appointment_time" name="appointment_time" required disabled>
+                            <option value="">ابتدا تاریخ و کارمند را انتخاب کنید</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">یادداشت (اختیاری)</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="توضیحات اضافی..."></textarea>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-check me-2"></i>تایید رزرو
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle me-2"></i>اطلاعات سالن</h5>
+            </div>
+            <div class="card-body">
+                <h6>{{ salon.name }}</h6>
+                <p class="text-muted">
+                    <i class="fas fa-map-marker-alt me-2"></i>{{ salon.address }}<br>
+                    <i class="fas fa-phone me-2"></i>{{ salon.phone }}<br>
+                    <i class="fas fa-clock me-2"></i>{{ salon.opening_time }} - {{ salon.closing_time }}
+                </p>
+            </div>
+        </div>
+        
+        <div class="card mt-3" id="priceCard" style="display: none;">
+            <div class="card-header">
+                <h5><i class="fas fa-money-bill me-2"></i>خلاصه رزرو</h5>
+            </div>
+            <div class="card-body">
+                <div id="selectedService"></div>
+                <div id="selectedPrice"></div>
+                <div id="selectedDuration"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const serviceSelect = document.getElementById('service_id');
+    const staffSelect = document.getElementById('staff_id');
+    const dateInput = document.getElementById('appointment_date');
+    const timeSelect = document.getElementById('appointment_time');
+    const priceCard = document.getElementById('priceCard');
+    
+    console.log('Elements found:', {
+        serviceSelect: !!serviceSelect,
+        staffSelect: !!staffSelect,
+        dateInput: !!dateInput,
+        timeSelect: !!timeSelect,
+        priceCard: !!priceCard
+    });
+    
+    // نمایش اطلاعات خدمت انتخاب شده
+    serviceSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (selectedOption.value) {
+            const price = selectedOption.dataset.price;
+            const duration = selectedOption.dataset.duration;
+            
+            document.getElementById('selectedService').innerHTML = `<strong>خدمت:</strong> ${selectedOption.text.split(' - ')[0]}`;
+            document.getElementById('selectedPrice').innerHTML = `<strong>قیمت:</strong> ${parseInt(price).toLocaleString()} تومان`;
+            document.getElementById('selectedDuration').innerHTML = `<strong>مدت زمان:</strong> ${duration} دقیقه`;
+            
+            priceCard.style.display = 'block';
+        } else {
+            priceCard.style.display = 'none';
+        }
+    });
+    
+    // بارگذاری ساعات خالی
+    function loadAvailableTimes() {
+        const staffId = staffSelect.value;
+        const hiddenInput = document.getElementById('appointment_date_gregorian');
+        const date = hiddenInput ? hiddenInput.value : dateInput.value;
+        
+        console.log('Loading times for:', { staffId, date, persianDate: dateInput.value }); // Debug log
+        
+        if (staffId && date) {
+            const url = `{% url 'appointments:available_times' salon.id %}?staff_id=${staffId}&date=${date}`;
+            console.log('Fetching URL:', url); // Debug log
+            
+            fetch(url)
+                .then(response => {
+                    console.log('Response status:', response.status); // Debug log
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Received data:', data); // Debug log
+                    timeSelect.innerHTML = '<option value="">ساعت مورد نظر را انتخاب کنید</option>';
+                    
+                    if (data.available_times && data.available_times.length > 0) {
+                        data.available_times.forEach(time => {
+                            const option = document.createElement('option');
+                            option.value = time;
+                            option.textContent = time;
+                            timeSelect.appendChild(option);
+                        });
+                        timeSelect.disabled = false;
+                    } else {
+                        timeSelect.innerHTML = '<option value="">ساعت خالی موجود نیست</option>';
+                        timeSelect.disabled = true;
+                    }
+                })
+                .catch(error => {
+                    console.error('خطا در بارگذاری ساعات:', error);
+                    timeSelect.innerHTML = '<option value="">خطا در بارگذاری ساعات</option>';
+                    timeSelect.disabled = true;
+                });
+        } else {
+            timeSelect.innerHTML = '<option value="">ابتدا تاریخ و کارمند را انتخاب کنید</option>';
+            timeSelect.disabled = true;
+        }
+    }
+    
+    if (staffSelect && dateInput && timeSelect) {
+        staffSelect.addEventListener('change', function() {
+            console.log('Staff changed:', this.value);
+            loadAvailableTimes();
+        });
+        
+        dateInput.addEventListener('change', function() {
+            console.log('Date changed:', this.value);
+            loadAvailableTimes();
+        });
+        
+        // Add additional event listener for date input
+        dateInput.addEventListener('input', function() {
+            console.log('Date input:', this.value);
+            loadAvailableTimes();
+        });
+        
+        // Persian date picker is handled by simple-persian-date.js
+        // Just listen for changes
+        console.log('Persian date picker will be handled by simple-persian-date.js');
+        
+        // Manual trigger button for testing
+        const testButton = document.createElement('button');
+        testButton.textContent = 'Test Load Times';
+        testButton.type = 'button';
+        testButton.className = 'btn btn-secondary btn-sm mt-2';
+        testButton.onclick = function() {
+            console.log('Manual test triggered');
+            loadAvailableTimes();
+        };
+        timeSelect.parentNode.appendChild(testButton);
+    } else {
+        console.error('Required elements not found:', {
+            staffSelect: !!staffSelect,
+            dateInput: !!dateInput,
+            timeSelect: !!timeSelect
+        });
+    }
+});
+</script>
+{% endblock %}

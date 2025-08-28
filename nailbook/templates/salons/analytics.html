@@ -1,0 +1,259 @@
+{% extends 'base.html' %}
+{% load persian_filters %}
+
+{% block title %}آنالیتیکس سالن - نیل بوک{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-chart-line me-2"></i>آنالیتیکس {{ salon.name }}
+                </h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-2 col-sm-6 mb-3">
+        <div class="dashboard-card bg-primary">
+            <i class="fas fa-calendar-alt"></i>
+            <h3>{{ analytics.total_appointments }}</h3>
+            <p>کل نوبت‌ها</p>
+        </div>
+    </div>
+    <div class="col-md-2 col-sm-6 mb-3">
+        <div class="dashboard-card bg-success">
+            <i class="fas fa-money-bill-wave"></i>
+            <h3>{{ analytics.total_revenue|format_price }}</h3>
+            <p>کل درآمد</p>
+        </div>
+    </div>
+    <div class="col-md-2 col-sm-6 mb-3">
+        <div class="dashboard-card bg-info">
+            <i class="fas fa-chart-bar"></i>
+            <h3>{{ analytics.avg_daily_appointments|floatformat:1 }}</h3>
+            <p>میانگین روزانه</p>
+        </div>
+    </div>
+    <div class="col-md-2 col-sm-6 mb-3">
+        <div class="dashboard-card bg-warning">
+            <i class="fas fa-percentage"></i>
+            <h3>{{ analytics.completion_rate|floatformat:1 }}%</h3>
+            <p>نرخ تکمیل</p>
+        </div>
+    </div>
+    <div class="col-md-2 col-sm-6 mb-3">
+        <div class="dashboard-card bg-danger">
+            <i class="fas fa-times-circle"></i>
+            <h3>{{ analytics.cancellation_rate|floatformat:1 }}%</h3>
+            <p>نرخ لغو</p>
+        </div>
+    </div>
+    <div class="col-md-2 col-sm-6 mb-3">
+        <div class="dashboard-card bg-secondary">
+            <i class="fas fa-users"></i>
+            <h3>{{ analytics.unique_customers }}</h3>
+            <p>مشتری منحصربفرد</p>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>توزیع وضعیت نوبت‌ها
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="statusChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-clock me-2"></i>ساعات پرترافیک
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if peak_hours %}
+                {% for hour in peak_hours %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>{{ hour.hour }}:00 - {{ hour.hour|add:1 }}:00</span>
+                    <div>
+                        <span class="badge bg-primary">{{ hour.count }} نوبت</span>
+                    </div>
+                </div>
+                <div class="progress mb-3" style="height: 8px;">
+                    <div class="progress-bar" role="progressbar" 
+                         style="width: {{ hour.percentage }}%"></div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="text-muted">داده‌ای موجود نیست</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-star me-2"></i>محبوب‌ترین خدمات
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if popular_services %}
+                {% for service in popular_services %}
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <strong>{{ service.service__name }}</strong>
+                        <br>
+                        <small class="text-muted">{{ service.count }} نوبت - {{ service.revenue|format_price }} تومان</small>
+                    </div>
+                    <div class="text-end">
+                        <div class="progress" style="width: 100px; height: 8px;">
+                            <div class="progress-bar bg-success" role="progressbar" 
+                                 style="width: {{ service.percentage }}%"></div>
+                        </div>
+                        <small class="text-muted">{{ service.percentage|floatformat:1 }}%</small>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="text-muted">داده‌ای موجود نیست</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-calendar-week me-2"></i>روزهای پرترافیک
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if busy_days %}
+                {% for day in busy_days %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>{{ day.day_name }}</span>
+                    <div>
+                        <span class="badge bg-info">{{ day.count }} نوبت</span>
+                    </div>
+                </div>
+                <div class="progress mb-3" style="height: 8px;">
+                    <div class="progress-bar bg-info" role="progressbar" 
+                         style="width: {{ day.percentage }}%"></div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="text-muted">داده‌ای موجود نیست</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line me-2"></i>روند درآمد ماهانه
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="revenueChart" width="400" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a href="{% url 'salons:dashboard' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-right me-2"></i>بازگشت به داشبورد
+    </a>
+    <a href="{% url 'salons:reports' salon.id %}" class="btn btn-primary">
+        <i class="fas fa-file-alt me-2"></i>مشاهده گزارشات
+    </a>
+</div>
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Status Chart
+const statusCtx = document.getElementById('statusChart').getContext('2d');
+const statusChart = new Chart(statusCtx, {
+    type: 'doughnut',
+    data: {
+        labels: {{ status_labels|safe }},
+        datasets: [{
+            data: {{ status_data|safe }},
+            backgroundColor: [
+                '#28a745',  // completed - green
+                '#dc3545',  // cancelled - red
+                '#17a2b8',  // confirmed - blue
+                '#ffc107',  // pending - yellow
+                '#6c757d'   // other - gray
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+// Revenue Chart
+const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+const revenueChart = new Chart(revenueCtx, {
+    type: 'line',
+    data: {
+        labels: {{ revenue_labels|safe }},
+        datasets: [{
+            label: 'درآمد (تومان)',
+            data: {{ revenue_data|safe }},
+            borderColor: '#e91e63',
+            backgroundColor: 'rgba(233, 30, 99, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return new Intl.NumberFormat('fa-IR').format(value) + ' تومان';
+                    }
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

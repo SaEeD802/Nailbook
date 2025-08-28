@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% load persian_filters %}
+
+{% block title %}حذف خدمت - {{ service.name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h4><i class="fas fa-exclamation-triangle me-2"></i>تایید حذف خدمت</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-warning me-2"></i>
+                    آیا مطمئن هستید که می‌خواهید خدمت <strong>{{ service.name }}</strong> را حذف کنید؟
+                </div>
+                
+                <div class="mb-3">
+                    <strong>اطلاعات خدمت:</strong><br>
+                    نام: {{ service.name }}<br>
+                    قیمت: {{ service.price|format_price }} تومان<br>
+                    مدت زمان: {{ service.duration }} دقیقه
+                </div>
+                
+                <p class="text-muted">
+                    <i class="fas fa-info-circle me-2"></i>
+                    توجه: این عمل قابل بازگشت نیست.
+                </p>
+                
+                <form method="post" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger me-2">
+                        <i class="fas fa-trash me-2"></i>بله، حذف کن
+                    </button>
+                </form>
+                <a href="{% url 'services:list' service.salon.id %}" class="btn btn-secondary">
+                    <i class="fas fa-times me-2"></i>انصراف
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

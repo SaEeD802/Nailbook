@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'salons',
     'appointments',
     'services',
+    'api',
 
 ]
 

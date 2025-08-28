@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}ایجاد سالن جدید - نیل بوک{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-plus me-2"></i>ایجاد سالن جدید</h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="name" class="form-label">نام سالن</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">شماره تلفن</label>
+                        <input type="tel" class="form-control" id="phone" name="phone" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="address" class="form-label">آدرس</label>
+                        <textarea class="form-control" id="address" name="address" rows="3" required></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="opening_time" class="form-label">ساعت شروع</label>
+                            <input type="time" class="form-control" id="opening_time" name="opening_time" value="09:00">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="closing_time" class="form-label">ساعت پایان</label>
+                            <input type="time" class="form-control" id="closing_time" name="closing_time" value="21:00">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="closed_days" class="form-label">روزهای تعطیل</label>
+                        <input type="text" class="form-control" id="closed_days" name="closed_days" 
+                               placeholder="مثال: friday,saturday">
+                        <div class="form-text">روزهای تعطیل را با کاما جدا کنید</div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'salons:dashboard' %}" class="btn btn-secondary">انصراف</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>ایجاد سالن
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

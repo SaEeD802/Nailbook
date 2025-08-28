@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}سالن ندارید - نیل بوک{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-store fa-5x text-muted mb-4"></i>
+                <h3>شما هنوز سالنی ندارید</h3>
+                <p class="text-muted mb-4">
+                    برای شروع کار با نیل بوک، ابتدا باید سالن خود را ثبت کنید.
+                </p>
+                <a href="{% url 'salons:create' %}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-plus me-2"></i>ثبت اولین سالن
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+{% load persian_filters %}
+
+{% block title %}داشبورد سالن - نیل بوک{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-tachometer-alt me-2"></i>داشبورد مدیریت سالن</h2>
+            <a href="{% url 'salons:create' %}" class="btn btn-success">
+                <i class="fas fa-plus me-2"></i>سالن جدید
+            </a>
+        </div>
+
+        <!-- انتخاب سالن -->
+        {% if salons.count > 1 %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="get">
+                    <div class="row align-items-end">
+                        <div class="col-md-10">
+                            <label for="salon_select" class="form-label">انتخاب سالن:</label>
+                            <select class="form-select" id="salon_select" name="salon_id" onchange="this.form.submit()">
+                                {% for salon in salons %}
+                                    <option value="{{ salon.id }}" {% if salon.id == selected_salon.id %}selected{% endif %}>
+                                        {{ salon.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- آمار کلی -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="card text-white bg-primary">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4>{{ stats.today_appointments }}</h4>
+                                <p class="mb-0">نوبت امروز</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-calendar-day fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 mb-3">
+                <div class="card text-white bg-success">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4>{{ stats.today_revenue|format_price }}</h4>
+                                <p class="mb-0">درآمد امروز (تومان)</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-money-bill fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 mb-3">
+                <div class="card text-white bg-warning">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4>{{ stats.pending_appointments }}</h4>
+                                <p class="mb-0">در انتظار تایید</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-clock fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 mb-3">
+                <div class="card text-white bg-info">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4>{{ stats.staff_count }}</h4>
+                                <p class="mb-0">تعداد کارمند</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-users fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- نوبت‌های امروز -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-calendar-alt me-2"></i>نوبت‌های امروز</h5>
+                <a href="{% url 'appointments:today' selected_salon.id %}" class="btn btn-sm btn-outline-primary">مشاهده همه</a>
+            </div>
+            <div class="card-body">
+                {% if upcoming_appointments %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>مشتری</th>
+                                    <th>خدمت</th>
+                                    <th>کارمند</th>
+                                    <th>ساعت</th>
+                                    <th>وضعیت</th>
+                                    <th>عملیات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for appointment in upcoming_appointments %}
+                                    <tr>
+                                        <td>{{ appointment.customer.get_full_name }}</td>
+                                        <td>{{ appointment.service.name }}</td>
+                                        <td>{{ appointment.staff.user.get_full_name }}</td>
+                                        <td>{{ appointment.appointment_time }}</td>
+                                        <td>
+                                            <span class="badge bg-{% if appointment.status == 'confirmed' %}success{% elif appointment.status == 'pending' %}warning{% else %}secondary{% endif %}">
+                                                {{ appointment.get_status_display_fa }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{% url 'appointments:detail' appointment.id %}" class="btn btn-outline-primary">جزئیات</a>
+                                                {% if appointment.status == 'pending' %}
+                                                    <button class="btn btn-outline-success" onclick="updateStatus({{ appointment.id }}, 'confirmed')">تایید</button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>امروز نوبتی ندارید.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- منوی مدیریت -->
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-users fa-3x text-primary mb-3"></i>
+                        <h5>مدیریت کارمندان</h5>
+                        <a href="{% url 'salons:staff_list' selected_salon.id %}" class="btn btn-primary">مشاهده</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 mb-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-list fa-3x text-success mb-3"></i>
+                        <h5>مدیریت خدمات</h5>
+                        <a href="{% url 'services:list' selected_salon.id %}" class="btn btn-success">مشاهده</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 mb-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-calendar fa-3x text-warning mb-3"></i>
+                        <h5>مدیریت نوبت‌ها</h5>
+                        <a href="{% url 'appointments:manage' selected_salon.id %}" class="btn btn-warning">مشاهده</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 mb-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-chart-bar fa-3x text-info mb-3"></i>
+                        <h5>گزارشات</h5>
+                        <a href="{% url 'salons:reports' selected_salon.id %}" class="btn btn-info">مشاهده</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateStatus(appointmentId, status) {
+    fetch(`/appointments/update-status/${appointmentId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `status=${status}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('خطا: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('خطا در بروزرسانی وضعیت');
+    });
+}
+</script>
+{% endblock %}
